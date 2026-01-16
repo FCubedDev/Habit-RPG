@@ -41,8 +41,9 @@ Este plan está diseñado para aprender programación mientras construimos el pr
 
 ### Actividades
 1. Instalar herramientas necesarias (Python, Node.js/Bun, Git)
-2. Crear cuenta en Supabase
-3. Entender la estructura del proyecto
+2. Crear cuenta en Supabase (base de datos)
+3. Crear cuenta en Clerk (autenticación)
+4. Entender la estructura del proyecto
 
 ### Tiempo estimado: 1-2 horas
 
@@ -175,62 +176,84 @@ Crear modelo `Category` con campos: id, name, description
 
 ---
 
-## 🔐 Sesión 3: Backend - Autenticación y Seguridad
+## 🔐 Sesión 3: Backend - Autenticación con Clerk
 
 ### Objetivos de Aprendizaje
-- Entender qué es JWT (JSON Web Tokens)
-- Aprender a hashear contraseñas
-- Implementar registro y login
+- Entender qué es Clerk y por qué lo usamos
+- Aprender a integrar servicios externos (BaaS - Backend as a Service)
+- Verificar tokens de Clerk en el backend
+- Sincronizar usuarios de Clerk con nuestra base de datos
 
 ### Conceptos a Explicar
 
-#### ¿Por qué no guardamos contraseñas en texto plano?
-**Analogía**: 
-- Como dejar las llaves de casa en la puerta
-- Si alguien accede a la BD, vería todas las contraseñas
-- **Solución**: Hashear (convertir en texto ilegible)
+#### ¿Qué es Clerk?
+**Explicación**:
+- Servicio de autenticación como servicio (Authentication as a Service)
+- Maneja todo el proceso de autenticación por ti
+- Registro, login, verificación de email, reset de password, OAuth (Google, GitHub, etc.)
+- Muy usado en la industria moderna
 
-#### ¿Qué es Hashing?
+**Ventajas**:
+- No necesitas escribir código de autenticación
+- Más seguro (ellos manejan la seguridad)
+- UI pre-construida para frontend
+- Ahorra mucho tiempo
+
+#### ¿Cómo funciona Clerk?
+**Flujo**:
+1. Usuario se registra/loguea en el frontend (usando componentes de Clerk)
+2. Clerk genera un token JWT
+3. Frontend envía el token en cada petición al backend
+4. Backend verifica el token con Clerk
+5. Si es válido, permite el acceso
+
+#### ¿Qué es un Webhook?
 **Explicación simple**:
-- Función matemática que convierte texto en otro texto
-- Es unidireccional (no se puede revertir)
-- Mismo texto = mismo hash siempre
-- Ejemplo: "password123" → "a1b2c3d4e5f6..." (siempre el mismo)
+- Como un "callback" o "notificación"
+- Cuando algo pasa en Clerk (ej: usuario se registra), Clerk te avisa
+- Tu backend puede crear el usuario en tu BD automáticamente
 
-#### ¿Qué es JWT?
-**Analogía**: 
-- Como un pase de entrada a un evento
-- Tiene información del usuario (nombre, id)
-- Tiene fecha de expiración
-- El servidor puede verificar que es válido sin guardarlo
+**Ejemplo**:
+- Usuario se registra en Clerk
+- Clerk envía webhook a tu backend: "Usuario X se registró"
+- Tu backend crea el usuario en tu BD
 
-**Estructura JWT**:
-```
-header.payload.signature
-```
+#### Verificación de Tokens
+**En el backend**:
+```python
+from clerk_backend_sdk import Clerk
 
-**Payload** (lo importante):
-```json
-{
-  "user_id": 1,
-  "exp": 1234567890
-}
+clerk = Clerk(api_key="tu_clave")
+
+# Verificar token
+user = clerk.verify_token(token)
+clerk_user_id = user["id"]
 ```
 
 ### Actividades Prácticas
-1. Instalar bibliotecas de seguridad (passlib, python-jose)
-2. Crear función para hashear contraseñas
-3. Crear función para verificar contraseñas
-4. Crear endpoint `/api/auth/register`
-5. Crear endpoint `/api/auth/login` (retorna JWT)
-6. Crear middleware de autenticación
+1. Crear cuenta en Clerk
+2. Obtener API keys (clave pública y secreta)
+3. Instalar `clerk-sdk-python` en el backend
+4. Crear función para verificar tokens de Clerk
+5. Crear middleware/dependency para proteger endpoints
+6. Actualizar modelo User (añadir `clerk_user_id`)
+7. Crear webhook handler para sincronizar usuarios
+8. Probar autenticación con Postman/Thunder Client
 
 ### Ejercicio
-Crear endpoint `/api/auth/me` que:
-- Requiere JWT válido
-- Devuelve información del usuario autenticado
+Crear endpoint `/api/users/me` que:
+- Verifica token de Clerk
+- Obtiene `clerk_user_id` del token
+- Busca usuario en BD por `clerk_user_id`
+- Devuelve información del usuario
 
-### Tiempo estimado: 3-4 horas
+### Notas Importantes
+- **No guardamos contraseñas**: Clerk las maneja
+- **No creamos endpoints de registro/login**: Clerk los maneja
+- **Solo verificamos tokens**: Para saber quién está autenticado
+- **Sincronizamos usuarios**: Cuando Clerk crea un usuario, lo creamos en nuestra BD
+
+### Tiempo estimado: 2-3 horas (más rápido que implementar JWT manualmente)
 
 ---
 
@@ -518,23 +541,46 @@ Crear componente `Contador` que:
 5. Crear página de ejemplo con componentes
 
 ### Ejercicio
-Crear formulario de login usando:
-- Input de Shadcn para email
-- Input de Shadcn para password (tipo password)
-- Button de Shadcn para enviar
+Crear componente de tarjeta (Card) usando Shadcn que:
+- Tiene título
+- Tiene descripción
+- Tiene botón de acción
+- Usa Tailwind para estilizar
 
 ### Tiempo estimado: 2 horas
 
 ---
 
-## 🔌 Sesión 9: Frontend - Conectar con Backend (Axios, React Query)
+## 🔌 Sesión 9: Frontend - Integrar Clerk y Conectar con Backend
 
 ### Objetivos de Aprendizaje
-- Entender cómo hacer peticiones HTTP
-- Aprender a usar Axios
-- Entender React Query para manejar estado del servidor
+- Integrar Clerk en el frontend
+- Entender cómo hacer peticiones HTTP con Axios
+- Aprender a usar React Query para manejar estado del servidor
+- Configurar interceptores para añadir tokens de Clerk
 
 ### Conceptos a Explicar
+
+#### Integrar Clerk en React
+**Explicación**:
+- Clerk proporciona componentes y hooks listos para usar
+- `<ClerkProvider>` envuelve tu app
+- `<SignIn />` y `<SignUp />` son componentes pre-construidos
+- `useUser()` hook para obtener usuario actual
+
+**Ejemplo**:
+```tsx
+import { ClerkProvider, SignIn, SignUp } from '@clerk/clerk-react';
+
+function App() {
+  return (
+    <ClerkProvider publishableKey="tu_clave_publica">
+      <SignIn />
+      <SignUp />
+    </ClerkProvider>
+  );
+}
+```
 
 #### ¿Qué es Axios?
 **Explicación**:
@@ -548,6 +594,23 @@ import axios from 'axios';
 
 const respuesta = await axios.get('http://localhost:8000/api/users/me');
 const datos = respuesta.data;
+```
+
+#### Interceptores de Axios
+**Concepto**:
+- Interceptan peticiones antes de enviarlas
+- Perfecto para añadir el token de Clerk automáticamente
+- No necesitas añadir el token manualmente en cada petición
+
+**Ejemplo**:
+```tsx
+axios.interceptors.request.use((config) => {
+  const token = getToken(); // Token de Clerk
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 ```
 
 #### ¿Qué es React Query?
@@ -571,22 +634,26 @@ const { data, isLoading, error } = useQuery({
 - `error` = Si hay error
 
 ### Actividades Prácticas
-1. Configurar Axios con base URL
-2. Configurar interceptores (añadir JWT a peticiones)
-3. Crear servicio `auth.ts` con funciones login/register
-4. Crear hook `useAuth` con React Query
-5. Crear página de Login funcional
-6. Guardar JWT en localStorage
+1. Instalar `@clerk/clerk-react`
+2. Configurar ClerkProvider en App.tsx
+3. Configurar Axios con base URL
+4. Configurar interceptores para añadir token de Clerk automáticamente
+5. Crear servicio `api.ts` con funciones para llamar al backend
+6. Crear hook `useUser` con React Query para obtener datos del usuario
+7. Probar conexión con backend
 
 ### Ejercicio
-Crear página de Login que:
-- Tiene formulario (email, password)
-- Al enviar, llama a `/api/auth/login`
-- Guarda el JWT
-- Redirige al dashboard si éxito
-- Muestra error si falla
+Configurar Clerk y Axios para que:
+- Clerk maneje registro/login automáticamente
+- Cada petición al backend incluya el token de Clerk
+- Podamos obtener datos del usuario desde el backend
 
-### Tiempo estimado: 3-4 horas
+### Notas Importantes
+- **No creamos páginas de Login/Register**: Clerk las proporciona
+- **Token se obtiene automáticamente**: Clerk lo maneja
+- **Solo configuramos**: Integración, no implementación
+
+### Tiempo estimado: 2-3 horas (más rápido que implementar auth manualmente)
 
 ---
 
@@ -614,38 +681,62 @@ Crear página de Login que:
 </Routes>
 ```
 
-#### Protección de Rutas
+#### Protección de Rutas con Clerk
 **Concepto**:
 - Algunas páginas solo para usuarios logueados
-- Si no estás logueado → redirige a login
+- Si no estás logueado → Clerk redirige automáticamente a login
 
-**Implementación**:
+**Implementación con Clerk**:
 ```tsx
+import { useAuth } from '@clerk/clerk-react';
+
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
   
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+  if (!isLoaded) {
+    return <div>Cargando...</div>;
+  }
+  
+  if (!isSignedIn) {
+    return <Navigate to="/sign-in" />;
   }
   
   return children;
 }
 ```
 
+**O usar componente de Clerk**:
+```tsx
+import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
+
+function ProtectedRoute({ children }) {
+  return (
+    <>
+      <SignedIn>{children}</SignedIn>
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
+    </>
+  );
+}
+```
+
 ### Actividades Prácticas
 1. Configurar React Router
 2. Crear layout principal
-3. Crear página Dashboard (mostrar datos del usuario)
-4. Crear página Habits (listar hábitos disponibles)
-5. Implementar protección de rutas
-6. Crear navegación entre páginas
+3. Integrar Clerk con React Router
+4. Crear página Dashboard (mostrar datos del usuario)
+5. Crear página Habits (listar hábitos disponibles)
+6. Implementar protección de rutas con Clerk
+7. Crear navegación entre páginas
 
 ### Ejercicio
-Crear Dashboard que muestra:
-- Nombre de usuario
-- Nivel global
-- XP total
-- Lista de hábitos activos
+Crear Dashboard protegido que:
+- Solo accesible si estás logueado (Clerk)
+- Muestra nombre de usuario (desde Clerk)
+- Muestra nivel global (desde backend)
+- Muestra XP total (desde backend)
+- Lista de hábitos activos (desde backend)
 
 ### Tiempo estimado: 3-4 horas
 

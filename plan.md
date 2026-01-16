@@ -23,8 +23,8 @@
 
 ```python
 - id: int (PK)
+- clerk_user_id: str (unique) # ID del usuario en Clerk
 - email: str (unique)
-- password_hash: str
 - username: str
 - global_level: int (nivel global calculado)
 - global_xp: int (XP total acumulada)
@@ -32,6 +32,8 @@
 - created_at: datetime
 - updated_at: datetime
 ```
+
+**Nota**: La autenticación se maneja con Clerk, por lo que no guardamos password_hash. Clerk proporciona el `clerk_user_id` que usamos para identificar usuarios.
 
 ### Category
 
@@ -106,11 +108,10 @@
 
 ## API Endpoints Simplificados
 
-### Autenticación (`/api/auth`)
+### Autenticación
+**Nota**: La autenticación se maneja completamente con Clerk. El frontend usa componentes de Clerk para registro/login. El backend solo verifica el token de Clerk.
 
-- `POST /api/auth/register` - Registro
-- `POST /api/auth/login` - Login (JWT)
-- `GET /api/auth/me` - Usuario actual
+- `GET /api/users/me` - Obtener usuario actual (requiere autenticación Clerk)
 
 ### Usuarios (`/api/users`)
 
@@ -214,7 +215,6 @@ habit-tracker/
 │   │   │   ├── __init__.py
 │   │   │   ├── deps.py           # Dependencies (auth, db)
 │   │   │   └── routes/
-│   │   │       ├── auth.py
 │   │   │       ├── users.py
 │   │   │       ├── categories.py
 │   │   │       ├── habits.py
@@ -228,7 +228,7 @@ habit-tracker/
 │   │   │   └── attribute_service.py
 │   │   └── utils/                # Utilidades
 │   │       ├── __init__.py
-│   │       └── security.py       # JWT, password hashing
+│   │       └── clerk.py          # Verificación de tokens Clerk
 │   ├── alembic/                  # Migraciones
 │   ├── requirements.txt
 │   ├── .env
@@ -241,16 +241,12 @@ habit-tracker/
     │   │   ├── habits/
     │   │   └── dashboard/
     │   ├── pages/
-    │   │   ├── Login.tsx
-    │   │   ├── Register.tsx
     │   │   ├── Dashboard.tsx
     │   │   └── Habits.tsx
     │   ├── hooks/
-    │   │   ├── useAuth.ts
     │   │   └── useHabits.ts
     │   ├── services/
     │   │   ├── api.ts            # Axios instance
-    │   │   ├── auth.ts
     │   │   └── habits.ts
     │   ├── types/
     │   │   └── index.ts
@@ -263,7 +259,7 @@ habit-tracker/
 
 ## Flujo de Usuario Simplificado
 
-1. **Registro/Login** → Obtiene JWT
+1. **Registro/Login** → Clerk maneja autenticación, obtiene token
 2. **Dashboard** → Ve progreso, nivel, XP, atributos, hábitos activos, rachas
 3. **Explorar Hábitos** → Ve todos los hábitos, filtra por categoría
 4. **Activar Hábito** → Selecciona hábito, elige nivel inicial (Principiante/Intermedio/Avanzado)
