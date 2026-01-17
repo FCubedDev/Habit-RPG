@@ -89,3 +89,6 @@ alembic/versions/*.pyc
 *.tmp
 *.temp
 .cache/
+
+# Documentation (learning sessions)
+docs/
