@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
 from app.models import Category
+from app.api.webhooks import router as webhooks_router
+from app.api.users import router as users_router
 import math
 
 # ============================================================
@@ -24,6 +26,9 @@ app = FastAPI(
     version="0.1.0"
 )
 
+# Registrar routers
+app.include_router(webhooks_router)
+app.include_router(users_router)
 
 # ============================================================
 # ENDPOINTS

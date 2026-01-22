@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     
     # Entorno
     environment: str = "development"
+
+    # Clerk
+    clerk_secret_key: str
+    clerk_publishable_key: str
+    clerk_webhook_secret: str = ""
     
     model_config = SettingsConfigDict(
         # Archivo donde buscar las variables
